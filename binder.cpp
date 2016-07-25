@@ -50,17 +50,21 @@ public:
 //compares if two sigs are the same
 bool equalsig(const sig &a, const sig &b){ 
 	if (a.in != b.in){
+		cout<<"a.in: "<<a.in<<" b.in: "<<b.in<<endl;
 		return false;
 	}
 	if (a.out != b.out){
+		cout<<"a.out: "<<a.out<<" b.out: "<<b.out<<endl;
 		return false;
 	}
 	if (a.argtype != b.argtype){
+		cout<<"a.argtype: "<<a.argtype<<" b.argtype: "<<b.argtype<<endl;
 		return false;
 	}
 	if (a.arglength != b.arglength){
 		if (a.arglength == 0 ||
 			b.arglength == 0){
+			cout<<"a.arglength: "<<a.arglength<<" b.arglength: "<<b.arglength<<endl;
 			return false;
 		}
 	}
@@ -70,16 +74,20 @@ bool equalsig(const sig &a, const sig &b){
 
 //compares if two procs are the exact same
 bool issame(const proc &a, const proc &b){
+	
 	//bool same = true;
 	//bool found = false;
-	if (a.name != b.name){
+	if (a.name.compare(b.name) != 0){
+		cout<<"a name: "<<a.name<<" b name: "<<b.name<<endl;
 		return false;
 	}
 	if ((a.sigs).size() != (b.sigs).size()){
+		cout<<"a sigs size: "<<(a.sigs).size()<<" b sigs size: "<<(b.sigs).size()<<endl;
 		return false;
 	}
 	for (int i = 0; i < (a.sigs).size(); i++){
 		if (!equalsig(a.sigs[i], b.sigs[i])){
+
 			return false;
 		}
 	}
@@ -91,6 +99,20 @@ map<int, vector<proc> > dbase;
 
 //data struct that keeps a round robin scheduling system for the servers
 vector<int> rrobin;
+
+void print_proc_names(){
+	cout<<"*****************************************************"<<endl;
+	map<int, vector<proc> >::iterator it;
+
+	for ( it = dbase.begin(); it != dbase.end(); it++ )
+	{
+	    for(int i = 0; i < it->second.size(); i++){
+	    	cout<<"Name: "<<(it->second)[i].name<<endl;
+	    }
+	    
+	}
+	cout<<"*****************************************************"<<endl;
+}
 
 #define BACKLOG 42
 
@@ -356,11 +378,12 @@ int main (){
 							cout << "register done" << endl;
 						}
 						else if (command == "call"){
+							print_proc_names();
 							flush(buffer);
 							cout << "call command received" << endl;
 							if (rrobin.size() == 0){
-								string snd = "call_fail";
-								cout << snd << ": no servers registered" << endl;
+								string snd = "call_fail: no servers registered";
+								//cout << snd << ": no servers registered" << endl;
 								send(i, snd.c_str(), snd.size(), 0);
 								close(i);
 								FD_CLR(i, &allCon);
@@ -391,7 +414,8 @@ int main (){
 									(p->sigs).push_back(*(tempsig));
 								}
 								for (int j = 0; j < rrobin.size(); j++){
-									for (int k = 0; k < dbase[rrobin[j]].size(); j++){
+									//change j to k
+									for (int k = 0; k < dbase[rrobin[j]].size(); k++){
 										if (issame(dbase[rrobin[j]][k], *(p))){
 											string snd_msg = "call_success, " + dbase[rrobin[j]][k].svrname + ", " + dbase[rrobin[j]][k].svrport;
 											cout << snd_msg << endl;
@@ -408,7 +432,7 @@ int main (){
 									if (found) break;
 								}
 								if (!found){
-									string snd = "call_fail";
+									string snd = "call_fail: function not found";
 									cout << snd << endl;
 									send(i, snd.c_str(), snd.size(), 0);
 									close(i);

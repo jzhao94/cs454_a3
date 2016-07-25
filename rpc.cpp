@@ -34,7 +34,7 @@ using namespace std;
 //but prob not gonna happen
 
 class rpcServer{
-	public:
+public:
 	std::string addressName;
 	int toClientPort;
 	int toClientSocket;
@@ -44,7 +44,7 @@ class rpcServer{
 	std::vector<skeleton>functions;
 	std::vector<string>functionName;
 	std::vector<std::vector<std::vector<unsigned int>>>functionArgTypes;
-	private:
+private:
 };
 
 static char* binder_addr;
@@ -78,7 +78,7 @@ int clientSocketSetup(const char* addr, const char* port){
 		return -1;
 	}
 	for(ports1 = serverInfo1; ports1 != NULL; ports1 = ports1->ai_next) {
-    	if ( (client = socket(ports1->ai_family, ports1->ai_socktype, ports1->ai_protocol)) == -1) {
+		if ( (client = socket(ports1->ai_family, ports1->ai_socktype, ports1->ai_protocol)) == -1) {
 			continue;
 		}
 		if (connect(client, ports1->ai_addr, ports1->ai_addrlen) == -1) {
@@ -142,59 +142,95 @@ void processArgTypes(int* argTypes, std::vector<std::vector<unsigned int>> & pro
 #define ARG_DOUBLE 5
 #define ARG_FLOAT 6
 */
-void processArgs(void** args, vector<vector<unsigned int>> & processed, string & msg){
-					
+//changed, added output variable handling, 3 param to 4 param
+void processArgs(void** args, vector<vector<unsigned int>> & processed, string & msg, bool care){
+
 	for(int i = 0; i < processed.size(); i++){
+		int in = processed[i][0];
+		int out = processed[i][1];
 		int type = processed[i][2];
-		unsigned int length = processed[i][3];
-		cout<< type<<", "<<length<<endl;;
+		unsigned int length = processed[i][3] == 0 ? processed[i][3]:processed[i][3]-1;
+		cout<<in<<", "<<out<<", "<< type<<", "<<length<<endl;;
 		for(int j = 0; j <= length; j++){
 			switch(type){
 				case 1:
 				{
-					cout<<args<<endl;
-					cout<<args[i]<<endl;
+					//cout<<args<<endl;
+					//cout<<args[i]<<endl;
 					//cout<<args[i][j]<<endl;
 					char c  =  ((char*)args[i])[j];
-					msg += " " + c;
-		cout<< c;
+					if(in == 0 && out == 1 && care){
+						msg += " 0";
+					}
+					else{
+						msg += " ";
+						msg += c;
+					}
+					cout<< c;
 					break;
 				}
 				case 2:
 				{
 					short s = ((short*)args[i])[j];
-					msg += " " + std::to_string(s);
-		cout<< s;
+					if(in == 0 && out == 1 && care){
+						msg += " 0";
+					}
+					else{
+						msg += " " + std::to_string(s);
+					}
+					cout<< s;
 					break;
 				}
 				case 3:
 				{
 					//cout<<args<<endl;
-					cout<<*(int *)args[i]<<endl;
+					//cout<<*(int *)args[i]<<endl;
 					int in = ((int*)args[i])[j];
-					msg += " " + std::to_string(in);
-		cout<< in;
+					if(in == 0 && out == 1 && care){
+						msg += " 0";
+						cerr<<"\nint\n"<<endl;
+					}
+					else{
+						msg += " " + std::to_string(in);
+					}
+					cout<< in;
 					break;
 				}
 				case 4:
 				{
 					long l = ((long*)args[i])[j];
-					msg += " " + std::to_string(l);
-		cout<< l;
+					if(in == 0 && out == 1 && care){
+						msg += " 0";
+						cerr<<"\nlong\n"<<endl;
+					}
+					else{
+						msg += " " + std::to_string(l);
+					}
+					cout<< l;
 					break;
 				}
 				case 5:
 				{
 					double d = ((double*)args[i])[j];
-					msg += " " + std::to_string(d);
-		cout<< d;
+					if(in == 0 && out == 1 && care){
+						msg += " 0";
+					}
+					else{
+						msg += " " + std::to_string(d);
+					}
+					cout<< d;
 					break;
 				}
 				case 6:
 				{
 					float f = ((float*)args[i])[j];
-					msg += " " + std::to_string(f);
-		cout<< f;
+					if(in == 0 && out == 1 && care){
+						msg += " 0";
+					}
+					else{
+						msg += " " + std::to_string(f);
+					}
+					cout<< f;
 					break;
 				}
 			}
@@ -248,7 +284,7 @@ int rpcInit(){
 	}
 
 	for(ports = serverInfo; ports != NULL; ports = ports->ai_next) {
-	    listener = socket(ports->ai_family, ports->ai_socktype, ports->ai_protocol);
+		listener = socket(ports->ai_family, ports->ai_socktype, ports->ai_protocol);
 		if (listener < 0) {
 			continue;
 		}	
@@ -319,7 +355,7 @@ int rpcCall(char* name, int* argTypes, void** args){
 	msg += std::string(name);
 	msg += " " + std::to_string(processed.size());
 	msg += msgTemp;
-	cout<<"call msg sending "<<endl;
+	cout<<"call msg sending: ";
 	cout<<msg<<endl;
 	cout << "msg c_str: " << msg.c_str() << endl;
 	int rety = send(client, msg.c_str(), msg.size(), 0);
@@ -339,28 +375,28 @@ int rpcCall(char* name, int* argTypes, void** args){
 	//cout<<check.substr(0, found)<<endl;
 	//assuming msg received of the format "call_"statues", server information(address, port)"
 	if(check.substr(0, found).compare("call_success") == 0){
-			cout<<"call_success"<<endl;
+		cout<<"CALL_SUCCESS"<<endl;
 			//server exist, talk with dat server
-			string serverInfo = check.substr(found+2, check.length());
-			found = serverInfo.find(",");
-			address = serverInfo.substr(0, found);
-			cout<<"address: " <<address<<endl;
-			portnum = serverInfo.substr(found+2, serverInfo.length());
-			cout<<"portnum: " <<portnum<<endl;
-			int newfd = clientSocketSetup(address.c_str(), portnum.c_str());
-			
+		string serverInfo = check.substr(found+2, check.length());
+		found = serverInfo.find(",");
+		address = serverInfo.substr(0, found);
+		cout<<"ADDRESS: " <<address<<endl;
+		portnum = serverInfo.substr(found+2, serverInfo.length());
+		cout<<"PORTNUM: " <<portnum<<endl;
+		int newfd = clientSocketSetup(address.c_str(), portnum.c_str());
+
 			//send stuff to the server
-			string executeMsg = "";
-			executeMsg += std::string(name);
-			executeMsg += " " + std::to_string(processed.size());
-			executeMsg += msgTemp;
-			cout<<executeMsg<<", "<<executeMsg.size()<<endl;
-			
-			string msgArgs = "";
-			processArgs(args, processed, msgArgs);
-			executeMsg += msgArgs;
-			cout<<executeMsg<<endl;
-			
+		string executeMsg = "";
+		executeMsg += std::string(name);
+		executeMsg += " " + std::to_string(processed.size());
+		executeMsg += msgTemp;
+		cout<<executeMsg<<", "<<executeMsg.size()<<endl;
+
+		string msgArgs = "";
+		processArgs(args, processed, msgArgs, true);
+		executeMsg += msgArgs;
+		cout<<executeMsg<<endl;
+
 			string msgSize = "execute " + executeMsg + " @";//std::to_string(executeMsg.length());
 			cout<<msgSize<<endl;
 			
@@ -380,29 +416,169 @@ int rpcCall(char* name, int* argTypes, void** args){
 			}
 			cout<<endl;
 			*/
+			//changed added marshelling
 			cout<<"waiting for recv"<<endl;
 			recv(newfd, out, bufferSize, 0);
 			int retVal = 0;
 			string executeCheck = std::string(out);
+			cout<<executeCheck<<endl;
 			flush(out);
 			stringstream ss(executeCheck);
 			string var;
 			ss >> var;
 			//found = executeCheck.find(",");
-			if(var.compare("execute_success,") == 0){
+			if(var.compare("execute_success") == 0){
 				//value stored in variable locations
-				retVal = 0;
+				//name
+				ss >> var;
+				int numOfArgs;
+				ss >> numOfArgs;
+				vector<vector<int>> argProperties;
+
+				int* argProp = new int[numOfArgs + 1];
+				for (int i = 0; i < numOfArgs; i++){
+					vector<int> *arguments = new vector<int>();
+					for (int j = 0; j < 4; j++){
+						int temp;
+						ss >> temp;
+						arguments->push_back(temp);
+					}
+					cout << arguments->at(0) << " " << arguments->at(1) << " " << arguments->at(2) << " " << arguments->at(3) << endl;
+					argProp[i] = (arguments->at(0) << 31) | (arguments->at(1) << 30) | (arguments->at(2) << 16) | (arguments->at(3));
+					argProperties.push_back(*(arguments));
+				}
+
+				argProp[numOfArgs] = 0;
+
+				void** argValues = new void*[argProperties.size()];
+				cout << "numOfArgs: " << numOfArgs << endl;
+				for(int i = 0; i < numOfArgs; i++){
+					void *values; 
+					char *cArray;
+					short *sArray;
+					int *iArray;
+					long *lArray;
+					double *dArray;
+					float *fArray;
+					int type = argProperties[i][2];
+					cout <<"in: "<<argProperties[i][0]<< " out: " << argProperties[i][1] << " type: " << type <<" length: "<< argProperties[i][3] << endl;
+					int leng = argProperties[i][3] == 0? argProperties[i][3]:argProperties[i][3]-1;
+
+			//change if varible is output, add address instead of whatever its pointing at
+			//if (argProperties[i][0] == 1){
+					switch (type){
+						case 1:
+						{
+							cArray = new char[leng + 1];
+							for (int j = 0; j <= leng; j++)
+							{
+								ss >> var;
+								cout << "var: " << var << endl;
+							char f1 = (var.c_str())[0];// = std::stoi(data.substr(0, found));
+							cArray[j] = f1;
+							cout<<"cArray at "<<j<<" " << cArray[j]<<endl;
+							//data = data.substr(found+1, data.length());
+						}
+						values = (void*)cArray;
+						break;
+					}
+					case 2:
+					{
+						sArray = new short[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							short f1;// = (short)std::stoi(data.substr(0, found));
+							ss >> var;
+							cout << "var: " << var << endl;
+							f1 = (short)std::stoi(var);
+							sArray[j] = f1;
+						//data = data.substr(found+1, data.length());
+						}
+						values = (void*)sArray;
+						break;
+					}
+					case 3:
+					{
+						iArray = new int[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							int f1;// = std::stoi(data.substr(0, found));
+							ss >> var;
+							f1 = std::stoi(var);
+							iArray[j] = f1;
+							cout << "var: " << var << " " << iArray[j] << endl;
+						//data = data.substr(found+1, data.length());
+						}
+						values = (void*)iArray;
+						//cout<<*(int*)values<<endl;
+						break;
+					}
+					case 4:
+					{
+						lArray = new long[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							long f1;// = (long)std::stoi(data.substr(0, found));
+							ss >> var;
+							cout << " var: " << var << endl;
+							f1 = (long)std::stoi(var);
+							lArray[j] = f1;
+						//data = data.substr(found+1, data.length());
+						}
+						values = (void*)lArray;
+						break;
+					}
+					case 5:
+					{
+						dArray = new double[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							double f1;// = (double)std::stoi(data.substr(0, found));
+							ss >> var;
+							cout << "var: " << var << endl;
+							f1 = (double)std::stoi(var);
+							dArray[j] = f1;
+						//data = data.substr(found+1, data.length());
+						}
+						values = (void*)dArray;
+						break;
+					}
+					case 6:
+					{
+						fArray = new float[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							float f1;// = (float)std::stoi(data.substr(0, found));
+							ss >> var;
+							cout << "var: " << var << endl;
+							f1 = (float)std::stoi(var);
+							fArray[j] = f1;
+						//data = data.substr(found+1, data.length());
+						}
+						values = (void*)fArray;
+					//float f1 = std::stoi(data.substr(0, found));
+					//values[j] = (void)f1;
+						break;
+					}
+				}
+				argValues[i] = values;
+			//}
 			}
-			else{
+
+			*args = argValues[0];
+			retVal = 0;
+		}
+		else{
 				//execute failed for whatever reason, should never happen
-				retVal = std::stoi(executeCheck.substr(found+2, executeCheck.length()));
-			}
-			close(newfd);
-			return retVal;
+			ss>>retVal;
+			//retVal = std::stoi(executeCheck.substr(found+2, executeCheck.length()));
+		}
+		close(newfd);
+		return retVal;
 	}
 	else if(check.substr(0, found).compare("call_warning") == 0){
 			//warnings!, do something
-			return 1;
+		return 1;
 	}
 	//else no server, call failed, we fucked so -1
 	return -1;
@@ -414,13 +590,13 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
 	//f is address to the skeleton of name
 	//send stuff to the server through the binder;
 	int i = 0;
-	
+
 	//ArgType processing
 	string msgTemp = "";
 	vector<vector<unsigned int>> processed;
 	processArgTypes(argTypes, processed, msgTemp);
 	//cout << "processed size " << processed.size() << endl;
-	
+
 	//msg to send
 	string msg = "register ";
 	//add funtion name
@@ -432,19 +608,19 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
 	//add args
 	msg += " " + std::to_string(processed.size());
 	msg += msgTemp;
-	
-	cout<<"toclientSocket: "<<server.toClientSocket<<endl;
-	cout<<"toclientPort: "<<server.toClientPort<<endl;
+
+		//cout<<"toclientSocket: "<<server.toClientSocket<<endl;
+		//cout<<"toclientPort: "<<server.toClientPort<<endl;
 	cout << "rpc reg: "<<msg << endl;
 
 	//send binder fucntion name and args
 	int count = send(server.toBinderSocket, msg.c_str(), msg.length(), 0);
-	cout<<count<<endl;
+		//cout<<count<<endl;
 	server.regCount++;
 	//response from binder
 
 	pthread_mutex_lock( &mutex1 );
-	
+
 	//this here is getting skipped
 	recv(server.toBinderSocket, out, bufferSize, 0);
 	cout<<out<<endl;
@@ -454,7 +630,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
 	string check = std::string(out);
 	flush(out);
 	if(check.compare("register_success") == 0){	
-		cerr<<" rpcRegister check good "<<check<<endl;
+			//cerr<<" rpcRegister check good "<<check<<endl;
 		//store in server
 		server.functions.push_back(f);
 		server.functionName.push_back(std::string(name));
@@ -500,7 +676,7 @@ void *c2s (void* ptr){
 	int numbytes = 1;
 	while((numbytes=recv(newfd, out, bufferSize, 0))>0){
 		out[numbytes] = '\0';
-		
+
 		cout<<"received: "<<out<<endl;
 		string temp = std::string(out);
 
@@ -540,14 +716,17 @@ void *c2s (void* ptr){
 			argProp[i] = (arguments->at(0) << 31) | (arguments->at(1) << 30) | (arguments->at(2) << 16) | (arguments->at(3));
 			argProperties.push_back(*(arguments));
 		}
-		
+
 		argProp[numOfArgs] = 0;
+		cout<<"arg properties: "<<endl;
 
 		for (int i = 0; i < argProperties.size(); i++){
 			for (int j = 0; j < 4; j++){
 				cout << argProperties[i][j];
 			}
 			cout<< endl;
+			int t = argProp[i];
+				//cout<<t<<endl;
 		}
 		/*int rep = (std::stoi(msg.substr(found+1, msg.length()))/32768)+1;
 		string goMsg = "go";
@@ -592,6 +771,7 @@ void *c2s (void* ptr){
 		argProp[numOfArgs] = 0;*/
 		
 		//data: arg1_values arg2_values ...
+		//change (void*)&arrays to (void*)arrays
 		void** argValues = new void*[argProperties.size()];
 		cout << "numOfArgs: " << numOfArgs << endl;
 		for(int i = 0; i < numOfArgs; i++){
@@ -603,128 +783,166 @@ void *c2s (void* ptr){
 			double *dArray;
 			float *fArray;
 			int type = argProperties[i][2];
-			cout << "type: " << type << endl;
+			cout <<"in: "<<argProperties[i][0]<< " out: " << argProperties[i][1] << " type: " << type <<" length: "<< argProperties[i][3] << endl;
+			int leng = argProperties[i][3] == 0? argProperties[i][3]:argProperties[i][3]-1;
+
+			//change if varible is output, add address instead of whatever its pointing at
 			//if (argProperties[i][0] == 1){
-				switch (type){
+			switch (type){
 				case 1:
-					cArray = new char[argProperties[i][3] + 1];
-					for (int j = 0; j <= argProperties[i][3]; j++){
+				{
+					cArray = new char[leng + 1];
+					for (int j = 0; j <= leng; j++)
+					{
 						ss >> var;
 						cout << "var: " << var << endl;
-						char f1 = (var.c_str())[0];// = std::stoi(data.substr(0, found));
-						cArray[j] = f1;
-						//data = data.substr(found+1, data.length());
+							char f1 = (var.c_str())[0];// = std::stoi(data.substr(0, found));
+							cArray[j] = f1;
+							cout<<"cArray at "<<j<<" " << cArray[j]<<endl;
+							//data = data.substr(found+1, data.length());
+						}
+						values = (void*)cArray;
+						break;
 					}
-					values = (void*)&cArray;
-					break;
-				case 2:
-					sArray = new short[argProperties[i][3] + 1];
-					for (int j = 0; j <= argProperties[i][3]; j++){
-						short f1;// = (short)std::stoi(data.substr(0, found));
-						ss >> var;
-						cout << "var: " << var << endl;
-						f1 = (short)std::stoi(var);
-						sArray[j] = f1;
+					case 2:
+					{
+						sArray = new short[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							short f1;// = (short)std::stoi(data.substr(0, found));
+							ss >> var;
+							cout << "var: " << var << endl;
+							f1 = (short)std::stoi(var);
+							sArray[j] = f1;
 						//data = data.substr(found+1, data.length());
+						}
+						values = (void*)sArray;
+						break;
 					}
-					values = (void*)&sArray;
-					break;
-				case 3:
-					iArray = new int[argProperties[i][3] + 1];
-					for (int j = 0; j <= argProperties[i][3]; j++){
-						int f1;// = std::stoi(data.substr(0, found));
-						ss >> var;
-						cout << "var: " << var << endl;
-						f1 = std::stoi(var);
-						iArray[j] = f1;
+					case 3:
+					{
+						iArray = new int[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							int f1;// = std::stoi(data.substr(0, found));
+							ss >> var;
+							f1 = std::stoi(var);
+							iArray[j] = f1;
+							cout << "var: " << var << " " << iArray[j] << endl;
 						//data = data.substr(found+1, data.length());
+						}
+						values = (void*)iArray;
+						//cout<<*(int*)values<<endl;
+						break;
 					}
-					values = (void*)&iArray;
-					break;
-				case 4:
-					lArray = new long[argProperties[i][3] + 1];
-					for (int j = 0; j <= argProperties[i][3]; j++){
-						long f1;// = (long)std::stoi(data.substr(0, found));
-						ss >> var;
-						cout << "var: " << var << endl;
-						f1 = (long)std::stoi(var);
-						lArray[j] = f1;
+					case 4:
+					{
+						lArray = new long[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							long f1;// = (long)std::stoi(data.substr(0, found));
+							ss >> var;
+							cout << " var: " << var << endl;
+							f1 = (long)std::stoi(var);
+							lArray[j] = f1;
 						//data = data.substr(found+1, data.length());
+						}
+						values = (void*)lArray;
+						break;
 					}
-					values = (void*)&lArray;
-					break;
-				case 5:
-					dArray = new double[argProperties[i][3] + 1];
-					for (int j = 0; j <= argProperties[i][3]; j++){
-						double f1;// = (double)std::stoi(data.substr(0, found));
-						ss >> var;
-						cout << "var: " << var << endl;
-						f1 = (double)std::stoi(var);
-						dArray[j] = f1;
+					case 5:
+					{
+						dArray = new double[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							double f1;// = (double)std::stoi(data.substr(0, found));
+							ss >> var;
+							cout << "var: " << var << endl;
+							f1 = (double)std::stoi(var);
+							dArray[j] = f1;
 						//data = data.substr(found+1, data.length());
+						}
+						values = (void*)dArray;
+						break;
 					}
-					values = (void*)&dArray;
-					break;
-				case 6:
-					fArray = new float[argProperties[i][3] + 1];
-					for (int j = 0; j <= argProperties[i][3]; j++){
-						float f1;// = (float)std::stoi(data.substr(0, found));
-						ss >> var;
-						cout << "var: " << var << endl;
-						f1 = (float)std::stoi(var);
-						fArray[j] = f1;
+					case 6:
+					{
+						fArray = new float[leng + 1];
+						for (int j = 0; j <= leng; j++)
+						{
+							float f1;// = (float)std::stoi(data.substr(0, found));
+							ss >> var;
+							cout << "var: " << var << endl;
+							f1 = (float)std::stoi(var);
+							fArray[j] = f1;
 						//data = data.substr(found+1, data.length());
-					}
-					values = (void*)&fArray;
+						}
+						values = (void*)fArray;
 					//float f1 = std::stoi(data.substr(0, found));
 					//values[j] = (void)f1;
-					break;
+						break;
+					}
 				}
 				argValues[i] = values;
 			//}
-		}
-
-		int result;
-		//find function from server.functions
-		for(int i = 0; i < server.functions.size(); i++){
-			if(server.functionName[i].compare(funcName) == 0){
-				result = (server.functions[i])(argProp, argValues);
-				break;
 			}
-		}
-		if(result != 0){
-			string str = "execute_fail, " + std::to_string(result);
-			send(newfd, str.c_str(), str.length(), 0);
-		}
-		else{
-			string str = "";
-			if (argProperties[0][1] == 1){
-				//of format: EXECUTE_SUCCESS, name, argTypes, args
-				str = "execute_success, " + funcName + ", " + std::to_string(argProperties[0][2]);
-				for (int i = 0; i < argProperties[0][3]; i++){
-						str += ", "+((string*)argValues[0])[i];
+			
+			int result;
+		//find function from server.functions
+			for(int i = 0; i < server.functions.size(); i++){
+				if(server.functionName[i].compare(funcName) == 0){
+					cout<<"skeleton found! "<<server.functionName[i]<<endl;
+					result = (server.functions[i])(argProp, argValues);
+					cout<<" execution result: "<<result<<endl;
+					//for(int j = 0; j<argValues.size(); j++)
+					//	cout<<argValues[i][j]<<endl;
+					break;
 				}
 			}
-			else{
-				str = "execute_fail, -1";
+			if(result != 0){
+				string str = "execute_fail " + std::to_string(result);
+				send(newfd, str.c_str(), str.length(), 0);
 			}
-			send(newfd, str.c_str(), str.length(), 0);
-		}
-	}
-	close(newfd);
-}
+			else{
+				//change, marshal response
+				string str = "";
+				if (argProperties[0][1] == 1){
+				//of format: EXECUTE_SUCCESS name argTypes args
+					str = "execute_success " + funcName + " " + std::to_string(argProperties.size());
+					string temp;
+					vector< vector<unsigned int> > processed;
 
-int rpcExecute(){
-	cerr << "execute" << endl;
+					processArgTypes(argProp, processed, temp);
+					str+=temp;
+
+					temp = "";
+					processArgs(argValues, processed, temp, false);
+					str+=temp;
+					cout<<str<<endl;
+
+				}
+				else{
+					str = "execute_fail -1";
+				}
+				cout<<"execute replay msg: "<<str<<endl;
+				send(newfd, str.c_str(), str.length(), 0);
+				//cout<<"elseend"<<endl;
+			}
+		}
+		close(newfd);
+	}
+
+	int rpcExecute(){
+		cerr << "execute" << endl;
 	//both ports are active
-	pthread_t stob, ctos;
-	int  iret1, iret2;
-	void* ignored;
-	
+		pthread_t stob, ctos;
+		int  iret1, iret2;
+		void* ignored;
+
 	//clear fd sets
-	FD_ZERO(&allCon);
-	FD_ZERO(&curCon);
-	
+		FD_ZERO(&allCon);
+		FD_ZERO(&curCon);
+
 	int listener = server.toClientSocket;//listening socket
 	int listener1 = server.toBinderSocket;
 	//set fd trackers
@@ -738,9 +956,10 @@ int rpcExecute(){
 	
 	//wait for all reg to finish
 	while(server.regCount != 0){}
-	
+
 	//connection handling
-	while(true){ // infinite loop?
+	//change from while(true) to while(!exitThread)
+	while(!exitThread){ // infinite loop?
 		curCon = allCon; // copy all connections
 		select(numOfCons+1, &curCon, NULL, NULL, NULL );
 		
@@ -753,8 +972,8 @@ int rpcExecute(){
 					cout << "connection!" << endl;
 					addrLen = sizeof(clientAddr);
 					acceptedSocket = accept(listener,
-									(struct sockaddr*)&clientAddr,
-									&addrLen);
+						(struct sockaddr*)&clientAddr,
+						&addrLen);
 					FD_SET(acceptedSocket, &allCon); //put into allCon
 					// keep track of how many connections we're got
 					if(acceptedSocket > numOfCons) 
@@ -774,12 +993,12 @@ int rpcExecute(){
 					if(iret1){
 						return EXIT_FAILURE;
 					}
-					pthread_join( stob, NULL);
-		
+					//pthread_join( stob, NULL);
+
 					if(exitThread){
 						pthread_cancel(ctos);
 						pthread_cancel(stob);
-						break;
+						//break;
 					}
 				}
 			}
